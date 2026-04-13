@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>SwiftBite — Delivery Time Predictor</title>
+
+<!-- React + Babel via CDN -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+
+<!-- Google Maps -->
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAPp5nViwSbLLkYf3KjID8-fq13iDjIYSE&libraries=places&loading=async"></script>
+<!-- Poppins — clean, friendly, exactly what Swiggy/Zomato use -->
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Poppins', sans-serif; background: #fff5f0; color: #1a1a1a; }
+
+/* NAVBAR */
+.navbar {
+  background: #fff;
+  box-shadow: 0 2px 12px rgba(0,0,0,.08);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 2.5rem; height: 64px;
+  position: sticky; top: 0; z-index: 999;
+}
+.nav-logo { display: flex; align-items: center; gap: .55rem; text-decoration: none; }
+.nav-logo-icon {
+  width: 38px; height: 38px; border-radius: 10px;
+  background: linear-gradient(135deg, #ff5a1f, #ff8c00);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.2rem; box-shadow: 0 4px 12px rgba(255,90,31,.35);
+}
+.nav-logo-text { font-size: 1.3rem; font-weight: 800; color: #1a1a1a; }
+.nav-logo-text span { color: #ff5a1f; }
+.nav-pill {
+  background: #ff5a1f; color: #fff; font-family: 'Poppins', sans-serif;
+  font-size: .82rem; font-weight: 600; border: none; cursor: pointer;
+  padding: .5rem 1.2rem; border-radius: 999px;
+  transition: background .2s, transform .15s;
+}
+.nav-pill:hover { background: #e04a10; transform: scale(1.03); }
+
+/* PAGE WRAPPER */
+.page { min-height: calc(100vh - 64px); }
+
+/* ─── HOME PAGE ─── */
+.home-hero {
+  background: linear-gradient(135deg, #ff5a1f 0%, #ff8c00 55%, #ffb347 100%);
+  padding: 4.5rem 2rem 5rem;
+  text-align: center; position: relative; overflow: hidden;
+}
+.home-hero::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse at 70% 30%, rgba(255,255,255,.12) 0%, transparent 60%);
+}
+.hero-badge {
+  display: inline-flex; align-items: center; gap: .4rem;
+  background: rgba(255,255,255,.2);
+  border: 1px solid rgba(255,255,255,.35);
+  color: #fff; border-radius: 999px;
+  padding: .35rem 1rem; font-size: .78rem; font-weight: 600;
+  margin-bottom: 1.2rem; letter-spacing: .04em;
+}
+.home-hero h1 {
+  font-size: clamp(2.2rem, 6vw, 4.2rem);
+  font-weight: 800; color: #fff; line-height: 1.1;
+  margin-bottom: 1rem;
+}
+.home-hero h1 span { background: rgba(255,255,255,.25); border-radius: 8px; padding: 0 .2em; }
+.home-hero p {
+  color: rgba(255,255,255,.9); font-size: 1.05rem;
+  max-width: 500px; margin: 0 auto 2rem; line-height: 1.65;
+}
+.hero-cta-row { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
+.btn-white {
+  background: #fff; color: #ff5a1f;
+  font-family: 'Poppins', sans-serif; font-weight: 700; font-size: .98rem;
+  border: none; cursor: pointer; border-radius: 12px;
+  padding: .85rem 2rem;
+  box-shadow: 0 6px 20px rgba(0,0,0,.15);
+  transition: transform .15s, box-shadow .15s;
+}
+.btn-white:hover { transform: translateY(-2px); box-shadow: 0 10px 28px rgba(0,0,0,.2); }
+.btn-outline-white {
+  background: transparent; color: #fff;
+  font-family: 'Poppins', sans-serif; font-weight: 600; font-size: .95rem;
+  border: 2px solid rgba(255,255,255,.6); cursor: pointer; border-radius: 12px;
+  padding: .83rem 2rem; transition: background .2s;
+}
+.btn-outline-white:hover { background: rgba(255,255,255,.15); }
+
+/* STATS */
+.stats-row {
+  display: flex; gap: 1.5rem; flex-wrap: wrap;
+  justify-content: center; padding: 2.5rem 2rem;
+  background: #fff; border-bottom: 1px solid #f0e8e0;
+}
+.stat-card {
+  text-align: center; padding: 1.2rem 2.2rem;
+  border: 2px solid #ffe8d6; border-radius: 16px;
+  background: #fff8f4;
+}
+.stat-num { font-size: 2rem; font-weight: 800; color: #ff5a1f; }
+.stat-label { font-size: .78rem; color: #888; margin-top: .15rem; font-weight: 500; }
+
+/* HOW IT WORKS */
+.section { padding: 4rem 2rem; max-width: 1100px; margin: 0 auto; }
+.section-header { text-align: center; margin-bottom: 2.5rem; }
+.section-tag {
+  display: inline-block; background: #fff3ed; color: #ff5a1f;
+  font-size: .78rem; font-weight: 700; letter-spacing: .08em;
+  text-transform: uppercase; border-radius: 999px;
+  padding: .3rem .9rem; margin-bottom: .7rem;
+}
+.section h2 { font-size: clamp(1.6rem, 3.5vw, 2.4rem); font-weight: 800; color: #1a1a1a; }
+.steps-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.2rem; }
+.step-card {
+  background: #fff; border: 2px solid #f0e8e0; border-radius: 18px;
+  padding: 1.6rem; transition: border-color .2s, transform .2s, box-shadow .2s;
+}
+.step-card:hover { border-color: #ff5a1f; transform: translateY(-4px); box-shadow: 0 12px 32px rgba(255,90,31,.12); }
+.step-num { font-size: 2.2rem; font-weight: 800; color: #ffe0cc; margin-bottom: .4rem; }
+.step-icon { font-size: 1.6rem; margin-bottom: .6rem; }
+.step-card h3 { font-size: 1rem; font-weight: 700; margin-bottom: .4rem; }
+.step-card p { font-size: .85rem; color: #666; line-height: 1.6; }
+
+/* TECH PILLS */
+.tech-row { display: flex; gap: .75rem; flex-wrap: wrap; justify-content: center; margin-top: 1.5rem; }
+.tech-pill {
+  background: #fff; border: 1.5px solid #f0e8e0; border-radius: 999px;
+  padding: .4rem 1rem; font-size: .82rem; color: #555; font-weight: 500;
+  display: flex; align-items: center; gap: .35rem;
+}
+
+/* FOOTER */
+footer {
+  background: #fff; border-top: 1px solid #f0e8e0;
+  text-align: center; padding: 1.5rem;
+  font-size: .82rem; color: #aaa;
+}
+
+/* ─── PREDICT PAGE ─── */
+.predict-layout {
+  display: grid; grid-template-columns: 400px 1fr;
+  height: calc(100vh - 64px);
+}
+.predict-panel {
+  background: #fff; overflow-y: auto;
+  border-right: 1px solid #f0e8e0;
+  padding: 1.8rem 1.5rem;
+  display: flex; flex-direction: column; gap: 1.2rem;
+}
+.predict-title { font-size: 1.4rem; font-weight: 800; color: #1a1a1a; }
+.predict-title span { color: #ff5a1f; }
+.predict-sub { font-size: .83rem; color: #888; margin-top: .2rem; line-height: 1.5; }
+
+/* FORM */
+.field { display: flex; flex-direction: column; gap: .4rem; }
+.field label { font-size: .75rem; font-weight: 700; color: #555; text-transform: uppercase; letter-spacing: .05em; }
+.input-box {
+  display: flex; align-items: center; gap: .5rem;
+  background: #fafafa; border: 1.5px solid #e8e0d8;
+  border-radius: 10px; padding: .65rem .9rem;
+  transition: border-color .2s, box-shadow .2s;
+}
+.input-box:focus-within { border-color: #ff5a1f; box-shadow: 0 0 0 3px rgba(255,90,31,.1); }
+.input-box input {
+  border: none; background: transparent; outline: none;
+  font-family: 'Poppins', sans-serif; font-size: .93rem; color: #1a1a1a;
+  width: 100%;
+}
+.input-box input::placeholder { color: #bbb; }
+
+/* traffic toggles */
+.traffic-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: .6rem; }
+.traffic-opt {
+  border: 1.5px solid #e8e0d8; border-radius: 10px;
+  background: #fafafa; cursor: pointer;
+  padding: .65rem .3rem; text-align: center;
+  font-family: 'Poppins', sans-serif; font-size: .82rem; font-weight: 600; color: #777;
+  transition: all .18s;
+}
+.traffic-opt .t-emoji { font-size: 1.2rem; display: block; margin-bottom: .2rem; }
+.traffic-opt.active { border-color: #ff5a1f; background: #fff3ed; color: #ff5a1f; }
+
+/* distance badge */
+.dist-badge {
+  display: none; align-items: center; gap: .5rem;
+  background: #f0fdf4; border: 1.5px solid #86efac;
+  border-radius: 10px; padding: .55rem .9rem;
+  font-size: .83rem; color: #16a34a; font-weight: 500;
+}
+.dist-badge.show { display: flex; }
+
+/* predict button */
+.predict-btn {
+  background: linear-gradient(135deg, #ff5a1f, #ff8c00);
+  border: none; border-radius: 12px; color: #fff;
+  font-family: 'Poppins', sans-serif; font-weight: 700; font-size: .98rem;
+  padding: .95rem; cursor: pointer; width: 100%;
+  box-shadow: 0 6px 20px rgba(255,90,31,.35);
+  transition: transform .15s, box-shadow .15s, opacity .15s;
+}
+.predict-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 10px 28px rgba(255,90,31,.45); }
+.predict-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+/* result */
+.result-card {
+  background: linear-gradient(135deg, #ff5a1f, #ff8c00);
+  border-radius: 16px; padding: 1.4rem;
+  animation: popIn .35s cubic-bezier(.175,.885,.32,1.275);
+}
+@keyframes popIn { from { opacity: 0; transform: scale(.9); } to { opacity: 1; transform: scale(1); } }
+.result-label { color: rgba(255,255,255,.8); font-size: .75rem; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; }
+.result-mins { font-size: 3.2rem; font-weight: 800; color: #fff; line-height: 1.1; margin: .2rem 0; }
+.result-range { color: rgba(255,255,255,.8); font-size: .83rem; margin-bottom: .9rem; }
+.result-chips { display: flex; gap: .5rem; flex-wrap: wrap; }
+.result-chip {
+  background: rgba(255,255,255,.2); border-radius: 999px;
+  padding: .25rem .75rem; font-size: .75rem; color: #fff; font-weight: 500;
+}
+
+/* info box */
+.info-box {
+  background: #fafafa; border: 1.5px solid #f0e8e0;
+  border-radius: 12px; padding: 1rem;
+  font-size: .8rem; color: #888; line-height: 1.7;
+}
+.info-box strong { color: #ff5a1f; }
+
+/* map */
+.map-container { position: relative; }
+#map { width: 100%; height: 100%; }
+.map-tip {
+  position: absolute; top: 1rem; left: 50%; transform: translateX(-50%);
+  background: rgba(255,255,255,.92); border: 1px solid #e0d8d0;
+  border-radius: 999px; padding: .45rem 1.1rem;
+  font-size: .8rem; color: #555; font-weight: 500;
+  backdrop-filter: blur(6px); pointer-events: none;
+  white-space: nowrap; box-shadow: 0 2px 10px rgba(0,0,0,.08);
+}
+
+/* toast */
+.toast {
+  position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%);
+  background: #ef4444; color: #fff; border-radius: 10px;
+  padding: .75rem 1.5rem; font-size: .85rem; font-weight: 500;
+  z-index: 9999; animation: toastIn .3s ease;
+  box-shadow: 0 6px 20px rgba(239,68,68,.35);
+}
+@keyframes toastIn { from { opacity:0; transform:translate(-50%,12px); } to { opacity:1; transform:translate(-50%,0); } }
+
+@media (max-width: 800px) {
+  .predict-layout { grid-template-columns: 1fr; grid-template-rows: auto 45vh; }
+}
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState, useEffect, useRef, useCallback } = React;
+
+// ─── MAP HELPERS ─────────────────────────────────────────────────────────────
+let mapInstance = null, geocoderInst = null, dirService = null, dirRenderer = null;
+let rMarker = null, dMarker = null;
+
+function initMap(onDistance, onHint) {
+  mapInstance = new google.maps.Map(document.getElementById('map'), {
+    center: { lat: 20.5937, lng: 78.9629 }, zoom: 5,
+    mapTypeControl: false, streetViewControl: false,
+    styles: [
+      { elementType: 'geometry', stylers: [{ color: '#fff8f4' }] },
+      { elementType: 'labels.text.fill', stylers: [{ color: '#555' }] },
+      { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#fff' }] },
+      { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#ffe0cc' }] },
+      { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#d0e8ff' }] },
+      { featureType: 'poi', elementType: 'labels', stylers: [{ visibility: 'off' }] },
+    ],
+  });
+  geocoderInst = new google.maps.Geocoder();
+  dirService   = new google.maps.DirectionsService();
+  dirRenderer  = new google.maps.DirectionsRenderer({
+    suppressMarkers: true,
+    polylineOptions: { strokeColor: '#ff5a1f', strokeWeight: 4, strokeOpacity: .9 },
+  });
+  dirRenderer.setMap(mapInstance);
+
+  let clickState = 'restaurant';
+  mapInstance.addListener('click', e => {
+    geocoderInst.geocode({ location: e.latLng }, (res, st) => {
+      const addr = st === 'OK' && res[0] ? res[0].formatted_address : `${e.latLng.lat().toFixed(4)}, ${e.latLng.lng().toFixed(4)}`;
+      placePin(clickState, e.latLng, addr, onDistance);
+      clickState = clickState === 'restaurant' ? 'delivery' : 'restaurant';
+      onHint(clickState);
+    });
+  });
+}
+
+function placePin(type, latLng, label, onDistance) {
+  const isRest = type === 'restaurant';
+  if (isRest) {
+    if (rMarker) rMarker.setMap(null);
+    rMarker = new google.maps.Marker({
+      position: latLng, map: mapInstance, title: 'Restaurant',
+      icon: { path: google.maps.SymbolPath.CIRCLE, scale: 11, fillColor: '#ff5a1f', fillOpacity: 1, strokeColor: '#fff', strokeWeight: 2.5 }
+    });
+    document.getElementById('restInput').value = label;
+    document.getElementById('restInput').dispatchEvent(new Event('change'));
+  } else {
+    if (dMarker) dMarker.setMap(null);
+    dMarker = new google.maps.Marker({
+      position: latLng, map: mapInstance, title: 'Delivery',
+      icon: { path: google.maps.SymbolPath.CIRCLE, scale: 11, fillColor: '#3b82f6', fillOpacity: 1, strokeColor: '#fff', strokeWeight: 2.5 }
+    });
+    document.getElementById('delivInput').value = label;
+    document.getElementById('delivInput').dispatchEvent(new Event('change'));
+  }
+  if (rMarker && dMarker) calcRoute(onDistance);
+}
+
+function calcRoute(onDistance) {
+  dirService.route({
+    origin: rMarker.getPosition(),
+    destination: dMarker.getPosition(),
+    travelMode: google.maps.TravelMode.DRIVING,
+  }, (result, status) => {
+    if (status === 'OK') {
+      dirRenderer.setDirections(result);
+      const leg = result.routes[0].legs[0];
+      const km  = leg.distance.value / 1000;
+      onDistance(km, leg.distance.text, leg.duration.text);
+      const bounds = new google.maps.LatLngBounds();
+      bounds.extend(rMarker.getPosition()); bounds.extend(dMarker.getPosition());
+      mapInstance.fitBounds(bounds, 80);
+    } else {
+      // Haversine fallback
+      const R=6371, p1=rMarker.getPosition(), p2=dMarker.getPosition();
+      const dLat=(p2.lat()-p1.lat())*Math.PI/180, dLon=(p2.lng()-p1.lng())*Math.PI/180;
+      const a=Math.sin(dLat/2)**2+Math.cos(p1.lat()*Math.PI/180)*Math.cos(p2.lat()*Math.PI/180)*Math.sin(dLon/2)**2;
+      const km=(R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a))*1.3);
+      onDistance(km, `~${km.toFixed(1)} km`, 'N/A');
+    }
+  });
+}
+
+function setupAC(inputId, type, onDistance) {
+  const input = document.getElementById(inputId);
+  if (!input || !window.google) return;
+  const ac = new google.maps.places.Autocomplete(input);
+  ac.addListener('place_changed', () => {
+    const place = ac.getPlace();
+    if (!place.geometry) return;
+    placePin(type, place.geometry.location, place.formatted_address || input.value, onDistance);
+    mapInstance.panTo(place.geometry.location);
+  });
+}
+
+// ─── APP COMPONENT ──────────────────────────────────────────────────────────
+function App() {
+  const [page, setPage] = useState('home');
+  return (
+    <div>
+      <Navbar page={page} setPage={setPage} />
+      {page === 'home' ? <HomePage setPage={setPage}/> : <PredictPage/>}
+    </div>
+  );
+}
+
+// ─── NAVBAR ──────────────────────────────────────────────────────────────────
+function Navbar({ page, setPage }) {
+  return (
+    <nav className="navbar">
+      <a className="nav-logo" onClick={() => setPage('home')} style={{cursor:'pointer'}}>
+        <div className="nav-logo-icon">🚀</div>
+        <span className="nav-logo-text">Swift<span>Bite</span></span>
+      </a>
+      {page === 'home'
+        ? <button className="nav-pill" onClick={() => setPage('predict')}>Predict Now →</button>
+        : <button className="nav-pill" style={{background:'#f0e8e0',color:'#ff5a1f'}} onClick={() => setPage('home')}>← Home</button>
+      }
+    </nav>
+  );
+}
+
+// ─── HOME PAGE ───────────────────────────────────────────────────────────────
+function HomePage({ setPage }) {
+  return (
+    <div className="page">
+      {/* Hero */}
+      <div className="home-hero">
+        <div className="hero-badge">🤖 ML-Powered · Real-time Maps</div>
+        <h1>Your food is on the way —<br/><span>know exactly when.</span></h1>
+        <p>SwiftBite uses Google Maps routing + Linear Regression to predict your delivery time based on real distance, traffic, and prep time.</p>
+        <div className="hero-cta-row">
+          <button className="btn-white" onClick={() => setPage('predict')}>⚡ Try the Predictor</button>
+          <a href="#how" className="btn-outline-white">How it works ↓</a>
+        </div>
+      </div>
+
+      {/* Stats */}
+      <div className="stats-row">
+        {[['95%','Prediction accuracy'],['< 2s','Response time'],['3','Traffic levels'],['Live','Maps API']].map(([n,l]) => (
+          <div className="stat-card" key={l}>
+            <div className="stat-num">{n}</div>
+            <div className="stat-label">{l}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* How it works */}
+      <div className="section" id="how">
+        <div className="section-header">
+          <div className="section-tag">How it works</div>
+          <h2>4 steps to your accurate ETA</h2>
+        </div>
+        <div className="steps-grid">
+          {[
+            ['01','📍','Enter Locations','Set your restaurant & delivery address using the search box or by clicking on the map.'],
+            ['02','🗺️','Maps API Routes','Google Maps calculates the real road distance and travel time between both pins.'],
+            ['03','🤖','ML Model Runs','Our scikit-learn Linear Regression model predicts delivery time from distance, prep time & traffic.'],
+            ['04','⏱️','Get Your ETA','Receive your delivery window instantly — displayed right on the page.'],
+          ].map(([n,icon,title,desc]) => (
+            <div className="step-card" key={n}>
+              <div className="step-num">{n}</div>
+              <div className="step-icon">{icon}</div>
+              <h3>{title}</h3>
+              <p>{desc}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Tech */}
+      <div className="section" style={{paddingTop:0}}>
+        <div className="section-header">
+          <div className="section-tag">Tech stack</div>
+          <h2>Built with industry tools</h2>
+        </div>
+        <div className="tech-row">
+          {[['🐍','Python / Flask'],['🤖','Scikit-learn'],['📊','Linear Regression'],['🗺️','Google Maps API'],['⚛️','React'],['🔢','NumPy']].map(([e,t]) => (
+            <div className="tech-pill" key={t}><span>{e}</span>{t}</div>
+          ))}
+        </div>
+      </div>
+
+      <footer>SwiftBite · ML + Web Project · Flask · Scikit-learn · React · Google Maps</footer>
+    </div>
+  );
+}
+
+// ─── PREDICT PAGE ─────────────────────────────────────────────────────────────
+function PredictPage() {
+  const [traffic,   setTraffic]   = useState('low');
+  const [prepTime,  setPrepTime]  = useState('15');
+  const [distKm,    setDistKm]    = useState(null);
+  const [distText,  setDistText]  = useState('');
+  const [durText,   setDurText]   = useState('');
+  const [result,    setResult]    = useState(null);
+  const [loading,   setLoading]   = useState(false);
+  const [toast,     setToast]     = useState('');
+  const [mapHint,   setMapHint]   = useState('restaurant');
+  const mapReady = useRef(false);
+
+  const showToast = msg => { setToast(msg); setTimeout(() => setToast(''), 3500); };
+
+  const handleDistance = useCallback((km, dText, durT) => {
+    setDistKm(km); setDistText(dText); setDurText(durT);
+  }, []);
+
+  const handleHintChange = useCallback(next => setMapHint(next), []);
+
+  useEffect(() => {
+    const tryInit = () => {
+      if (window.google && !mapReady.current) {
+        mapReady.current = true;
+        initMap(handleDistance, handleHintChange);
+        setTimeout(() => {
+          setupAC('restInput',  'restaurant', handleDistance);
+          setupAC('delivInput', 'delivery',   handleDistance);
+        }, 200);
+      }
+    };
+    tryInit();
+    const t = setInterval(tryInit, 500);
+    return () => clearInterval(t);
+  }, [handleDistance, handleHintChange]);
+
+  async function handlePredict() {
+    if (!distKm) { showToast('Please set both locations on the map first.'); return; }
+    const prep = parseFloat(prepTime);
+    if (isNaN(prep) || prep < 1) { showToast('Please enter a valid prep time.'); return; }
+
+    setLoading(true);
+    try {
+      const res  = await fetch('/api/predict', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ distance: distKm, prep_time: prep, traffic }),
+      });
+      const data = await res.json();
+      if (data.success) setResult(data);
+      else showToast('Prediction error: ' + data.error);
+    } catch {
+      showToast('Network error — is Flask running on port 5000?');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const trafficOpts = [
+    { val: 'low',    emoji: '🟢', label: 'Low' },
+    { val: 'medium', emoji: '🟡', label: 'Medium' },
+    { val: 'high',   emoji: '🔴', label: 'High' },
+  ];
+
+  const hintText = mapHint === 'restaurant'
+    ? 'Click map to place 🟠 restaurant pin'
+    : 'Now click to place 🔵 delivery pin';
+
+  return (
+    <div className="predict-layout">
+      {/* LEFT PANEL */}
+      <aside className="predict-panel">
+        <div>
+          <h2 className="predict-title">Delivery <span>Predictor</span></h2>
+          <p className="predict-sub">Set both pins on the map or type addresses below, then hit Predict.</p>
+        </div>
+
+        {/* Restaurant */}
+        <div className="field">
+          <label>🍽️ Restaurant Location</label>
+          <div className="input-box">
+            <span>📍</span>
+            <input id="restInput" type="text" placeholder="Search or click map…"/>
+          </div>
+        </div>
+
+        {/* Delivery */}
+        <div className="field">
+          <label>🏠 Delivery Location</label>
+          <div className="input-box">
+            <span>📍</span>
+            <input id="delivInput" type="text" placeholder="Search or click map…"/>
+          </div>
+        </div>
+
+        {/* Distance badge */}
+        {distKm && (
+          <div className="dist-badge show">
+            <span>📏</span>
+            <span>Road distance: <strong>{distText}</strong> · Drive: <strong>{durText}</strong></span>
+          </div>
+        )}
+
+        {/* Prep time */}
+        <div className="field">
+          <label>⏳ Preparation Time (minutes)</label>
+          <div className="input-box">
+            <span>🕐</span>
+            <input
+              type="number" value={prepTime} min="1" max="90"
+              onChange={e => setPrepTime(e.target.value)}
+              placeholder="e.g. 15"
+            />
+          </div>
+        </div>
+
+        {/* Traffic */}
+        <div className="field">
+          <label>🚦 Traffic Level</label>
+          <div className="traffic-row">
+            {trafficOpts.map(o => (
+              <button
+                key={o.val}
+                className={`traffic-opt${traffic === o.val ? ' active' : ''}`}
+                onClick={() => setTraffic(o.val)}
+              >
+                <span className="t-emoji">{o.emoji}</span>
+                {o.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <button
+          className="predict-btn"
+          disabled={!distKm || loading}
+          onClick={handlePredict}
+        >
+          {loading ? '⏳ Predicting…' : '⚡ Predict Delivery Time'}
+        </button>
+
+        {/* Result */}
+        {result && (
+          <div className="result-card">
+            <div className="result-label">Estimated Delivery Time</div>
+            <div className="result-mins">{result.prediction} min</div>
+            <div className="result-range">Likely range: {result.range_low}–{result.range_high} min</div>
+            <div className="result-chips">
+              <span className="result-chip">📏 {result.distance} km</span>
+              <span className="result-chip">⏳ Prep: {prepTime} min</span>
+              <span className="result-chip">🚦 {traffic.charAt(0).toUpperCase()+traffic.slice(1)} traffic</span>
+            </div>
+          </div>
+        )}
+
+        {/* Model info */}
+        <div className="info-box">
+          <strong>Model:</strong> Linear Regression (scikit-learn)<br/>
+          <strong>Features:</strong> Distance · Prep Time · Traffic Level<br/>
+          <strong>API:</strong> Google Maps Distance Matrix<br/>
+          Trained on 2,000 synthetic delivery records.
+        </div>
+      </aside>
+
+      {/* MAP */}
+      <div className="map-container">
+        <div className="map-tip">{hintText}</div>
+        <div id="map" style={{width:'100%',height:'100%'}}></div>
+      </div>
+
+      {toast && <div className="toast">{toast}</div>}
+    </div>
+  );
+}
+
+// ─── RENDER ──────────────────────────────────────────────────────────────────
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
